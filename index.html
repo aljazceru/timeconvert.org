@@ -74,6 +74,44 @@
             font-family: monospace;
             word-break: break-all;
             font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .copy-button {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            color: #6b7280;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .copy-button:hover {
+            background-color: #f3f4f6;
+        }
+        .copy-button svg {
+            width: 16px;
+            height: 16px;
+        }
+        .copied-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #10b981;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            animation: fadeOut 2s forwards;
+            pointer-events: none;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; }
         }
     </style>
 </head>
@@ -151,8 +189,11 @@
                 let detectedFormat = '';
                 let date;
 
+                // Clean up input - remove newlines and excess whitespace
+                const cleanValue = value.replace(/\\n/g, '').trim();
+
                 // Try parsing as Unix timestamp (seconds)
-                const unixTimestamp = parseInt(value);
+                const unixTimestamp = parseInt(cleanValue);
                 if (!isNaN(unixTimestamp)) {
                     if (unixTimestamp > 1000000000 && unixTimestamp < 10000000000) {
                         date = new Date(unixTimestamp * 1000);
@@ -165,7 +206,7 @@
 
                 // Try parsing as ISO 8601 / RFC 3339
                 if (!date) {
-                    date = new Date(value);
+                    date = new Date(cleanValue);
                     if (!isNaN(date.getTime())) {
                         detectedFormat = 'ISO 8601 / RFC 3339';
                     }
@@ -187,7 +228,15 @@
                     html += `
                         <div class="format-item">
                             <div class="format-label">${format}</div>
-                            <div class="format-value">${value}</div>
+                            <div class="format-value">
+                                <span>${value}</span>
+                                <button class="copy-button" onclick="copyToClipboard('${value.toString().replace(/'/g, "\\'")}', this)">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2z"></path>
+                                        <path d="M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2"></path>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     `;
                 }
@@ -201,6 +250,23 @@
         }
 
         timeInput.addEventListener('input', (e) => detectAndConvert(e.target.value));
+
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Create and show toast notification
+                const toast = document.createElement('div');
+                toast.className = 'copied-toast';
+                toast.textContent = 'Copied to clipboard!';
+                document.body.appendChild(toast);
+                
+                // Remove toast after animation
+                toast.addEventListener('animationend', () => {
+                    document.body.removeChild(toast);
+                });
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
     </script>
 </body>
 </html>
