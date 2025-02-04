@@ -60,6 +60,19 @@
         .copy-button:hover {
             color: #fff;
         }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #3b82f6;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -69,19 +82,33 @@
         
         <div class="input-group">
             <label for="timeInput">Enter Timestamp / Date:</label>
-            <input type="text" id="timeInput" placeholder="Enter timestamp, date or any other time format you can think of">
+            <input type="text" id="timeInput" placeholder="Enter timestamp or date (YYYY-MM-DD, MM/DD/YYYY)">
         </div>
-        
-	</div>
-
 
         <div class="formats" id="result"></div>
+
+        <div class="footer">
+            <a href="https://x.com/aaaljaz" target="_blank">Twitter</a> |
+            <a href="https://github.com/aljazceru/time-converter" target="_blank">GitHub</a>
+        </div>
     </div>
 
     <script>
         function convertTime(value) {
             if (!value) return;
-            let date = !isNaN(value) ? new Date(parseInt(value) * 1000) : new Date(value);
+            let date;
+            if (/^\d{19}$/.test(value)) {
+                date = new Date(Number(BigInt(value) / 1000000n)); // Nanoseconds -> Milliseconds
+            } else if (/^\d{16}$/.test(value)) {
+                date = new Date(Number(BigInt(value) / 1000n)); // Microseconds -> Milliseconds
+            } else if (/^\d{13}$/.test(value)) {
+                date = new Date(parseInt(value)); // Milliseconds
+            } else if (/^\d{10}$/.test(value)) {
+                date = new Date(parseInt(value) * 1000); // Seconds
+            } else {
+                date = new Date(value);
+            }
+
             if (isNaN(date.getTime())) {
                 document.getElementById('result').innerHTML = "Invalid date format.";
                 return;
@@ -91,8 +118,8 @@
                 'ISO 8601': date.toISOString(),
                 'Unix Timestamp (seconds)': Math.floor(date.getTime() / 1000),
                 'Unix Timestamp (mili)': date.getTime(),
-                'Unix Timestamp (micro)': date.getTime() * 1000,
-                'Unix Timestamp (nano)': date.getTime() * 1000000,
+                'Unix Timestamp (micro)': (BigInt(date.getTime()) * 1000n).toString(),
+                'Unix Timestamp (nano)': (BigInt(date.getTime()) * 1000000n).toString(),
                 'UTC': date.toUTCString(),
                 'Local': date.toString(),
                 'RFC 2822': date.toUTCString(),
@@ -102,14 +129,14 @@
                 'European Format (DD/MM/YYYY)': date.toLocaleDateString('en-GB'),
                 'American Format (MM/DD/YYYY)': date.toLocaleDateString('en-US'),
                 'ISO Week Date': date.toISOString().split('T')[0] + ' (Week ' + getISOWeek(date) + ')',
-                'Full Date with Timezone': date.toString(),
+                'Full Date with Timezone': date.toUTCString(),
                 '24-Hour Format': date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0'),
                 '12-Hour Format': date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
             };
             
             let resultHtml = '';
             for (const [label, value] of Object.entries(formats)) {
-                resultHtml += `<div class="format-item"><strong>${label}:</strong> <span>${value}</span><button class="copy-button" onclick="copyToClipboard('${value}')">📋</button></div>`;
+                resultHtml += `<div class="format-item"><strong>${label}:</strong> <span>${value.toString()}</span><button class="copy-button" onclick="copyToClipboard('${value.toString()}')">📋</button></div>`;
             }
             
             document.getElementById('result').innerHTML = resultHtml;
@@ -134,7 +161,6 @@
         }
         
         document.getElementById('timeInput').addEventListener('input', (e) => convertTime(e.target.value));
-        document.getElementById('datePicker').addEventListener('change', (e) => convertTime(e.target.value));
     </script>
 </body>
 </html>
