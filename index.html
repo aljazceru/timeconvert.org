@@ -25,6 +25,12 @@
         .input-group {
             margin-bottom: 20px;
         }
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+            width: 100%;
+        }
         input {
             width: 100%;
             padding: 10px;
@@ -73,6 +79,18 @@
         .footer a:hover {
             text-decoration: underline;
         }
+        #nowButton {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0 15px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #nowButton:hover {
+            background-color: #2563eb;
+        }
     </style>
 
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-XF1NXK6FL0"></script>
@@ -92,7 +110,10 @@
         
         <div class="input-group">
             <label for="timeInput">Enter Timestamp / Date:</label>
-            <input type="text" id="timeInput" placeholder="Enter timestamp or date (YYYY-MM-DD, MM/DD/YYYY)">
+            <div class="input-wrapper">
+                <input type="text" id="timeInput" placeholder="Enter timestamp or date (YYYY-MM-DD, MM/DD/YYYY)">
+                <button id="nowButton" title="Insert current timestamp">Now</button>
+            </div>
         </div>
 
         <div class="formats" id="result"></div>
@@ -169,6 +190,12 @@
                 console.error('Failed to copy: ', err);
             });
         }
+        
+        document.getElementById('nowButton').addEventListener('click', () => {
+            const now = Date.now();
+            document.getElementById('timeInput').value = now;
+            convertTime(now);
+        });
         
         document.getElementById('timeInput').addEventListener('input', (e) => convertTime(e.target.value));
     </script>
