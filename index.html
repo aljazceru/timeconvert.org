@@ -3,9 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Convert timestamps and dates into multiple formats instantly. Supports Unix, ISO 8601, UTC, and more.">
+    <meta name="description" content="Convert timestamps and dates into multiple formats instantly. Supports Unix (seconds, milli, micro, nano), ISO 8601, RFC 2822, UTC, and more.">
     <title>Time Format Converter | Convert Timestamps Instantly</title>
+    <link rel="canonical" href="https://timeconvert.org/">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#121212">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="timeconvert.org">
+    <meta property="og:url" content="https://timeconvert.org/">
+    <meta property="og:title" content="Time Format Converter | Convert Timestamps Instantly">
+    <meta property="og:description" content="Paste any timestamp or date and get Unix, ISO 8601, RFC 2822, UTC and local formats instantly. No sign-up, no clutter.">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Time Format Converter | Convert Timestamps Instantly">
+    <meta name="twitter:description" content="Paste any timestamp or date and get Unix, ISO 8601, RFC 2822, UTC and local formats instantly. No sign-up, no clutter.">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Time Format Converter",
+        "url": "https://timeconvert.org/",
+        "description": "Convert timestamps and dates into Unix (seconds, milliseconds, microseconds, nanoseconds), ISO 8601, RFC 2822, UTC and local formats.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+    </script>
+
     <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
         body {
             font-family: Arial, sans-serif;
             max-width: 800px;
@@ -41,6 +72,19 @@
             background-color: #333;
             color: #e0e0e0;
         }
+        .note {
+            font-size: 13px;
+            color: #9a9a9a;
+            margin: 8px 0 0;
+        }
+        .message {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #fbbf24;
+        }
+        .message:empty {
+            display: none;
+        }
         .formats {
             margin-top: 20px;
             display: grid;
@@ -56,15 +100,23 @@
             align-items: center;
             gap: 10px;
         }
+        .format-item span {
+            overflow-wrap: anywhere;
+        }
         .copy-button {
             background: none;
             border: none;
             color: #bbb;
             cursor: pointer;
             font-size: 16px;
+            margin-left: auto;
+            min-width: 2em;
         }
         .copy-button:hover {
             color: #fff;
+        }
+        .copy-button.copied {
+            color: #22c55e;
         }
         .footer {
             margin-top: 20px;
@@ -85,22 +137,27 @@
             border: none;
             border-radius: 4px;
             padding: 0 15px;
+            margin-top: 5px;
             cursor: pointer;
             font-size: 14px;
         }
         #nowButton:hover {
             background-color: #2563eb;
         }
+        @media (max-width: 520px) {
+            .format-item {
+                flex-wrap: wrap;
+                row-gap: 4px;
+            }
+            .format-item strong {
+                flex: 1 1 100%;
+            }
+            .format-item span {
+                flex: 1 1 0;
+                min-width: 0;
+            }
+        }
     </style>
-
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XF1NXK6FL0"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'G-XF1NXK6FL0');
-    </script>
 
     <script defer data-domain="timeconvert.org" src="https://analytics.cypherpunk.cloud/js/script.js"></script>
 
@@ -109,97 +166,244 @@
     <div class="container">
         <h1>Time Format Converter</h1>
         <p>Convert timestamps and dates into various formats, including Unix, ISO 8601, UTC, and more.</p>
-        
+
         <div class="input-group">
             <label for="timeInput">Enter Timestamp / Date:</label>
             <div class="input-wrapper">
-                <input type="text" id="timeInput" placeholder="Enter timestamp or date (YYYY-MM-DD, MM/DD/YYYY)">
+                <input type="text" id="timeInput" autocomplete="off" spellcheck="false" placeholder="Unix timestamp, YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY or now">
                 <button id="nowButton" title="Insert current timestamp">Now</button>
             </div>
+            <p class="note">Unix numbers are detected by size (seconds, milli, micro or nano). A date-only ISO value like 2026-03-29 is read as midnight UTC; anything else without a timezone is read as your local time.</p>
         </div>
 
+        <div class="message" id="message" role="status" aria-live="polite"></div>
         <div class="formats" id="result"></div>
 
         <div class="footer">
-            <a href="https://x.com/aaaljaz" target="_blank">Twitter</a> |
-            <a href="https://github.com/aljazceru/timeconvert.org" target="_blank">GitHub</a>
+            <a href="https://x.com/aaaljaz" target="_blank" rel="noopener">Twitter</a> |
+            <a href="https://github.com/aljazceru/timeconvert.org" target="_blank" rel="noopener">GitHub</a>
         </div>
     </div>
 
     <script>
-        function convertTime(value) {
-            if (!value) return;
-            let date;
-            if (/^\d{19}$/.test(value)) {
-                date = new Date(Number(BigInt(value) / 1000000n)); // Nanoseconds -> Milliseconds
-            } else if (/^\d{16}$/.test(value)) {
-                date = new Date(Number(BigInt(value) / 1000n)); // Microseconds -> Milliseconds
-            } else if (/^\d{13}$/.test(value)) {
-                date = new Date(parseInt(value)); // Milliseconds
-            } else if (/^\d{10}$/.test(value)) {
-                date = new Date(parseInt(value) * 1000); // Seconds
-            } else {
-                date = new Date(value);
-            }
+        const NS_PER_MS = 1000000n;
+        const MAX_MS = 8640000000000000; // JavaScript Date limit (+/- 275760 years)
+        const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-            if (isNaN(date.getTime())) {
-                document.getElementById('result').innerHTML = "Invalid date format.";
-                return;
+        const pad = (n, len = 2) => String(n).padStart(len, '0');
+
+        // BigInt division that rounds toward negative infinity (needed for pre-1970 timestamps).
+        function floorDiv(a, b) {
+            const q = a / b;
+            return (a % b !== 0n && ((a < 0n) !== (b < 0n))) ? q - 1n : q;
+        }
+
+        // Parse a plain number into nanoseconds since the epoch, picking the unit by size.
+        function parseUnixNumber(text) {
+            const m = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(text);
+            if (!m) return null;
+            const [, sign, intRaw, frac = ''] = m;
+            const digits = intRaw.replace(/^0+(?=\d)/, '').length;
+            let unit, exp;
+            if (digits <= 11) { unit = 'seconds'; exp = 9; }
+            else if (digits <= 14) { unit = 'milliseconds'; exp = 6; }
+            else if (digits <= 17) { unit = 'microseconds'; exp = 3; }
+            else { unit = 'nanoseconds'; exp = 0; }
+            const fracNs = exp > 0 ? (frac + '0'.repeat(exp)).slice(0, exp) : '';
+            let ns = BigInt(intRaw + fracNs);
+            if (sign === '-') ns = -ns;
+            return { ns, unit };
+        }
+
+        // DD/MM/YYYY, MM/DD/YYYY or DD.MM.YYYY with an optional time, read as local time.
+        function parseDayMonthYear(text) {
+            const m = /^(\d{1,2})([\/.\-])(\d{1,2})\2(\d{4})(?:[ T,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(text);
+            if (!m) return null;
+            const a = Number(m[1]), sep = m[2], b = Number(m[3]), year = Number(m[4]);
+            const h = Number(m[5] || 0), mi = Number(m[6] || 0), s = Number(m[7] || 0);
+            let day, month, note = '';
+            if (sep === '.' || a > 12) { day = a; month = b; }
+            else if (b > 12) { month = a; day = b; }
+            else {
+                month = a; day = b;
+                if (a !== b) note = `Ambiguous date: read as MM/DD/YYYY (${MONTHS[a - 1]} ${b}). For ${MONTHS[b - 1]} ${a}, use YYYY-MM-DD.`;
             }
-            
-            const formats = {
+            const d = new Date(year, month - 1, day, h, mi, s);
+            if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day || h > 23 || mi > 59 || s > 59) {
+                return { invalid: true };
+            }
+            return { date: d, note };
+        }
+
+        // Returns { ns: BigInt, date: Date, note } or { error }.
+        function parseInput(raw) {
+            const text = String(raw).trim();
+            if (!text) return null;
+            let ns, note = '';
+            if (/^now$/i.test(text)) {
+                ns = BigInt(Date.now()) * NS_PER_MS;
+            } else if (/^[+-]?\d+(?:\.\d+)?$/.test(text)) {
+                const parsed = parseUnixNumber(text);
+                ns = parsed.ns;
+                note = `Read as Unix ${parsed.unit}.`;
+            } else {
+                const dmy = parseDayMonthYear(text);
+                let date;
+                if (dmy) {
+                    if (dmy.invalid) return { error: 'Invalid date format.' };
+                    date = dmy.date;
+                    note = dmy.note;
+                } else {
+                    date = new Date(text);
+                }
+                if (isNaN(date.getTime())) return { error: 'Invalid date format.' };
+                ns = BigInt(date.getTime()) * NS_PER_MS;
+            }
+            const ms = floorDiv(ns, NS_PER_MS);
+            if (ms > BigInt(MAX_MS) || ms < BigInt(-MAX_MS)) {
+                return { error: 'Out of range: JavaScript dates only cover about 275,000 years either side of 1970.' };
+            }
+            return { ns, date: new Date(Number(ms)), note };
+        }
+
+        function offsetString(date, colon) {
+            const off = -date.getTimezoneOffset();
+            const sign = off >= 0 ? '+' : '-';
+            const abs = Math.abs(off);
+            return sign + pad(Math.floor(abs / 60)) + (colon ? ':' : '') + pad(abs % 60);
+        }
+
+        function yearString(y) {
+            return (y >= 0 && y <= 9999) ? pad(y, 4) : (y < 0 ? '-' : '+') + pad(Math.abs(y), 6);
+        }
+
+        // ISO 8601 week date in local time, e.g. 2026-W53-1.
+        function isoWeekDate(date) {
+            const t = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            t.setUTCFullYear(date.getFullYear()); // keep years 0-99 correct
+            const weekday = t.getUTCDay() || 7;
+            t.setUTCDate(t.getUTCDate() + 4 - weekday); // Thursday of this ISO week
+            const weekYear = t.getUTCFullYear();
+            const jan1 = new Date(Date.UTC(2000, 0, 1));
+            jan1.setUTCFullYear(weekYear);
+            const week = Math.ceil(((t - jan1) / 86400000 + 1) / 7);
+            return `${yearString(weekYear)}-W${pad(week)}-${weekday}`;
+        }
+
+        function rfc2822(date) {
+            return `${DAYS[date.getDay()]}, ${pad(date.getDate())} ${MONTHS[date.getMonth()]} ${date.getFullYear()} ` +
+                `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${offsetString(date, false)}`;
+        }
+
+        function utcString(date) {
+            const iso = date.toISOString();
+            const t = iso.indexOf('T');
+            return iso.slice(0, t) + ' ' + iso.slice(t + 1, t + 9) + ' UTC';
+        }
+
+        function buildFormats(ns, date) {
+            let zone = '';
+            try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
+            const ms = floorDiv(ns, NS_PER_MS);
+            return {
                 'ISO 8601': date.toISOString(),
-                'Unix Timestamp (seconds)': Math.floor(date.getTime() / 1000),
-                'Unix Timestamp (mili)': date.getTime(),
-                'Unix Timestamp (micro)': (BigInt(date.getTime()) * 1000n).toString(),
-                'Unix Timestamp (nano)': (BigInt(date.getTime()) * 1000000n).toString(),
-                'UTC': date.toUTCString(),
+                'ISO 8601 (local offset)': `${yearString(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T` +
+                    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}${offsetString(date, true)}`,
+                'Unix Timestamp (seconds)': floorDiv(ns, 1000000000n).toString(),
+                'Unix Timestamp (milli)': ms.toString(),
+                'Unix Timestamp (micro)': floorDiv(ns, 1000n).toString(),
+                'Unix Timestamp (nano)': ns.toString(),
+                'UTC': utcString(date),
+                'HTTP Date (GMT)': date.toUTCString(),
+                'RFC 2822 (local)': rfc2822(date),
                 'Local': date.toString(),
-                'RFC 2822': date.toUTCString(),
                 'Short Date': date.toLocaleDateString(),
                 'Long Date': date.toLocaleString(),
                 'Time Only': date.toLocaleTimeString(),
                 'European Format (DD/MM/YYYY)': date.toLocaleDateString('en-GB'),
                 'American Format (MM/DD/YYYY)': date.toLocaleDateString('en-US'),
-                'ISO Week Date': date.toISOString().split('T')[0] + ' (Week ' + getISOWeek(date) + ')',
-                'Full Date with Timezone': date.toUTCString(),
-                '24-Hour Format': date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0'),
+                'ISO Week Date (local)': isoWeekDate(date),
+                'Full Date with Timezone': date.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'long' }) + (zone ? ` (${zone})` : ''),
+                '24-Hour Format': `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
                 '12-Hour Format': date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
             };
-            
-            let resultHtml = '';
+        }
+
+        function render(formats, message) {
+            const result = document.getElementById('result');
+            document.getElementById('message').textContent = message || '';
+            result.replaceChildren();
+            if (!formats) return;
             for (const [label, value] of Object.entries(formats)) {
-                resultHtml += `<div class="format-item"><strong>${label}:</strong> <span>${value.toString()}</span><button class="copy-button" onclick="copyToClipboard('${value.toString()}')">📋</button></div>`;
+                const item = document.createElement('div');
+                item.className = 'format-item';
+                const strong = document.createElement('strong');
+                strong.textContent = label + ':';
+                const span = document.createElement('span');
+                span.textContent = value;
+                const button = document.createElement('button');
+                button.className = 'copy-button';
+                button.type = 'button';
+                button.textContent = '📋';
+                button.title = 'Copy ' + label;
+                button.setAttribute('aria-label', 'Copy ' + label);
+                button.dataset.value = value;
+                item.append(strong, span, button);
+                result.appendChild(item);
             }
-            
-            document.getElementById('result').innerHTML = resultHtml;
         }
 
-        function getISOWeek(date) {
-            const target = new Date(date.valueOf());
-            const dayNumber = (date.getDay() + 6) % 7;
-            target.setDate(target.getDate() - dayNumber + 3);
-            const firstThursday = target.valueOf();
-            target.setMonth(0, 1);
-            if (target.getDay() !== 4) {
-                target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
-            }
-            return 1 + Math.ceil((firstThursday - target) / 604800000);
+        function convertTime(value) {
+            const parsed = parseInput(value);
+            if (!parsed) { render(null, ''); return; }
+            if (parsed.error) { render(null, parsed.error); return; }
+            render(buildFormats(parsed.ns, parsed.date), parsed.note);
         }
 
-        function copyToClipboard(value) {
-            navigator.clipboard.writeText(value).catch(err => {
-                console.error('Failed to copy: ', err);
+        async function copyToClipboard(value) {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(value);
+                return;
+            }
+            const ta = document.createElement('textarea');
+            ta.value = value;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            ta.remove();
+            if (!ok) throw new Error('copy failed');
+        }
+
+        if (typeof document !== 'undefined') {
+            document.getElementById('result').addEventListener('click', async (e) => {
+                const button = e.target.closest('.copy-button');
+                if (!button) return;
+                try {
+                    await copyToClipboard(button.dataset.value);
+                    button.textContent = '✓';
+                    button.classList.add('copied');
+                } catch (err) {
+                    button.textContent = '✗';
+                }
+                clearTimeout(button._reset);
+                button._reset = setTimeout(() => {
+                    button.textContent = '📋';
+                    button.classList.remove('copied');
+                }, 1200);
             });
+
+            document.getElementById('nowButton').addEventListener('click', () => {
+                const now = String(Date.now());
+                document.getElementById('timeInput').value = now;
+                convertTime(now);
+            });
+
+            document.getElementById('timeInput').addEventListener('input', (e) => convertTime(e.target.value));
         }
-        
-        document.getElementById('nowButton').addEventListener('click', () => {
-            const now = Date.now();
-            document.getElementById('timeInput').value = now;
-            convertTime(now);
-        });
-        
-        document.getElementById('timeInput').addEventListener('input', (e) => convertTime(e.target.value));
     </script>
 </body>
 </html>
